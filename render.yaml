@@ -2,7 +2,7 @@ services:
   - type: web
     name: accelerate-api
     runtime: node
-    buildCommand: npm ci && npm run build -w packages/shared && npm run build -w apps/api
+    buildCommand: npm ci --include=dev && npm run build -w packages/shared && npm run build -w apps/api
     startCommand: npm run db:migrate -w apps/api && npm start -w apps/api
     healthCheckPath: /health
     envVars:
