@@ -1,4 +1,9 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+
+// Load .env regardless of whether the process starts in the repo root
+// (`npm run dev:api`) or inside the workspace (`npm run -w apps/api dev`).
+// Real environment variables always take precedence over .env files.
+dotenv.config({ path: ["apps/api/.env", ".env"] });
 
 function req(name: string, fallback = ""): string {
   return process.env[name] ?? fallback;

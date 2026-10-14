@@ -3,7 +3,9 @@ export const API_BASE = (import.meta.env.VITE_API_BASE_URL as string) || "http:/
 async function req<T>(path: string, opts: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     credentials: "include",
-    headers: { "content-type": "application/json", ...(opts.headers || {}) },
+    // Custom header doubles as the CSRF signal the API checks for cookie
+    // sessions (see csrf middleware): a cross-site form can never set this.
+    headers: { "content-type": "application/json", "x-requested-with": "XMLHttpRequest", ...(opts.headers || {}) },
     ...opts,
   });
   const body = await res.json().catch(() => ({}));

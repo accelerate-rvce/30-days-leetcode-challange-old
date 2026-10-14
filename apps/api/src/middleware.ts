@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import { ZodSchema } from "zod";
 import type { Store, User } from "./store.js";
 import { hashToken } from "./lib/crypto.js";
+import { config } from "./config.js";
 
 declare global {
   namespace Express {
@@ -78,10 +79,11 @@ export function csrf(req: Request, res: Response, next: NextFunction) {
   if (["GET", "HEAD", "OPTIONS"].includes(req.method)) { next(); return; }
   const usingCookie = Boolean(req.cookies?.["acc_session"]);
   if (usingCookie && req.headers["x-requested-with"] !== "XMLHttpRequest" && !req.headers.authorization) {
-    // Allow JSON API clients that set content-type + origin check instead
+    // Allow JSON API clients that set content-type + origin check instead.
+    // Uses configured origins (with localhost default), not raw env — an unset
+    // WEB_ORIGIN must not lock out the default dev origin.
     const origin = req.headers.origin ?? "";
-    const allowed = (process.env.WEB_ORIGIN ?? "").split(",").map((s) => s.trim());
-    if (origin && !allowed.includes(origin)) { res.status(403).json({ error: { code: "CSRF_BLOCKED", message: "Origin not allowed" } }); return; }
+    if (origin && !config.corsOrigins.includes(origin)) { res.status(403).json({ error: { code: "CSRF_BLOCKED", message: "Origin not allowed" } }); return; }
   }
   next();
 }

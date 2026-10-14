@@ -29,12 +29,15 @@ Prerequisites: Node ≥ 20.
 
 ```bash
 npm ci
-cp .env.example apps/api/.env   # edit values; never commit secrets
+cp .env.example apps/api/.env   # edit values; never commit secrets (.env is gitignored; real env vars always win)
 npm run dev:api                  # :4000 (STORE=memory by default)
 npm run dev:web                  # :5173 (VITE_API_BASE_URL → :4000/api/v1)
 ```
 
-Seed demo data (clearly-marked DEMO, dev only): `npm run db:seed -w apps/api` (admin@rvce.edu.in / Password123!).
+Seed demo data (clearly-marked DEMO, dev only): run the server with seeding enabled —
+`SEED_DEMO=1 npm run dev:api` (demo admin: admin@rvce.edu.in / Password123!).
+With `STORE=memory` every process owns an isolated store, so `npm run db:seed -w apps/api`
+alone can never put users into the running server — the seed must happen at server boot.
 
 ## Scripts
 
@@ -44,7 +47,9 @@ Seed demo data (clearly-marked DEMO, dev only): `npm run db:seed -w apps/api` (a
 | `npm run test` | Vitest: shared (2) + API (25) + web (1) |
 | `npm run build` | shared → api → web production builds |
 | `npm run db:migrate -w apps/api` | `prisma migrate deploy` (needs DATABASE_URL) |
-| `npm run bootstrap -w apps/api` | create SUPERADMIN from `BOOTSTRAP_ADMIN_EMAIL/PASSWORD` env only |
+| `npm run dev:seeded -w apps/api` | dev server with `SEED_DEMO=1` (demo admin + challenges, dev only) |
+| `npm run db:seed -w apps/api` | seed smoke check (exits; with `STORE=memory` use `dev:seeded` to log in) |
+| `npm run bootstrap -w apps/api` | credential check / create SUPERADMIN from `BOOTSTRAP_ADMIN_EMAIL/PASSWORD` env only (with `STORE=memory`, start the server with the same env so it bootstraps at boot) |
 
 E2E: `cd apps/web && npx playwright test` (needs API on :4000 + web on :5173; Chromium via `npx playwright install chromium`).
 
@@ -69,10 +74,15 @@ E2E: `cd apps/web && npx playwright test` (needs API on :4000 + web on :5173; Ch
 Use Neon, Supabase, or Render Postgres free tier. Then: set `DATABASE_URL`, `STORE=prisma`, run `prisma migrate deploy`. **Check current free-tier policies before launch**: row/storage caps, inactivity suspension/deletion, and backup/export availability vary and change often. Export via `pg_dump $DATABASE_URL` weekly; CSV exports for leaderboard/completions/participants are also in the admin panel.
 
 ### First admin (secure bootstrap)
+With the default `STORE=memory`, each process owns an isolated store — so start the
+server itself with the bootstrap credentials (it bootstraps at boot, idempotently):
 ```bash
-BOOTSTRAP_ADMIN_EMAIL=you@rvce.edu.in BOOTSTRAP_ADMIN_PASSWORD='<strong, unique>' npm run bootstrap -w apps/api
+BOOTSTRAP_ADMIN_EMAIL=you@rvce.edu.in BOOTSTRAP_ADMIN_PASSWORD='<strong, unique>' npm run dev:api
 ```
-Passwords are bcrypt-hashed; never hardcoded; the bootstrap refuses to run without env credentials. Rotate the password after first login via forgot-password.
+Then log in with those credentials; the account has role `SUPERADMIN` and can open `/#/admin`.
+`npm run bootstrap -w apps/api` with the same env vars works as a credential check, but its
+created user vanishes when that process exits under `STORE=memory`.
+Passwords are bcrypt-hashed; never hardcoded. Rotate the password after first login via forgot-password.
 
 ## Registration modes & scoring
 

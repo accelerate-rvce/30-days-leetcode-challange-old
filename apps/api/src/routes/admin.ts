@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { leetcodeSlugFromUrl, canonicalLeetcodeUrl } from "@accelerate/shared";
+import { leetcodeSlugFromUrl, canonicalLeetcodeUrl, normalizeEmail, isRvceEmail } from "@accelerate/shared";
 import { newToken, hashToken, hashPassword } from "../lib/crypto.js";
 import { sendEmail } from "../lib/email.js";
 import { auth, requireAdmin, requireRole, rateLimit, validate, audit } from "../middleware.js";
@@ -144,7 +144,6 @@ adminRouter.post("/waitlist/:id/reject", validate(z.object({ reason: z.string().
 
 adminRouter.post("/waitlist/invite", validate(z.object({ emails: z.array(z.string()).min(1).max(500) })), async (req, res) => {
   const store = req.store!;
-  const { normalizeEmail, isRvceEmail } = await import("@accelerate/shared");
   let invited = 0, skipped = 0;
   const failures: string[] = [];
   for (const raw of req.body.emails as string[]) {
