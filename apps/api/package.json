@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "dev:seeded": "SEED_DEMO=1 tsx watch src/index.ts",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "prisma generate --schema prisma/schema.prisma && tsc -p tsconfig.build.json",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "tsc --noEmit -p tsconfig.json",

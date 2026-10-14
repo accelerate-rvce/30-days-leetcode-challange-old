@@ -9,7 +9,7 @@ A production-oriented full-stack platform for **Accelerate, the Computer Science
 ## Architecture decisions
 
 1. **HashRouter, not BrowserRouter.** GitHub Pages has no SPA fallback configuration; Cloudflare Pages needs a `_routes`/`_redirects` file. Hash routing works identically on both with zero host config. Trade-off: slightly uglier URLs (`/#/dashboard`).
-2. **Storage abstraction.** The production path is Prisma → managed PostgreSQL (`STORE=prisma`, migrations in `apps/api/prisma/migrations`). The runtime defaults to `STORE=memory` so local dev, CI, and the automated test suite run with zero infrastructure. The memory store implements the exact same entity model/uniqueness constraints as the Prisma schema; swapping is one env var. This is documented, not hidden: `/ready` reports the active backend.
+2. **Storage: memory serving + Postgres snapshots.** The server always serves from an in-memory store (fast, zero-infra local dev/CI). With `STORE=prisma` + `DATABASE_URL` (Supabase), it loads the snapshot at boot and writes it back every `SNAPSHOT_INTERVAL_SEC` (default 60s) plus on shutdown — a crash can lose <1 interval of writes. Routes never touch the DB directly (`apps/api/src/lib/persist.ts` is the only persistence code). `/ready` reports the active backend.
 3. **Verification is a replaceable provider behind an interface** (`VerificationProvider`), strictly separated from the scoring engine. The default `mock` provider is explicitly flagged `mock:true` and **refuses to run in production** (falls back to manual-review mode). A generic `http` provider slot exists for an operator-configured lookup service; `disabled` forces manual review. No LeetCode credentials are ever collected; no scraping is attempted by default.
 4. **Jobs are external + idempotent.** Render free services sleep; nothing essential lives in process memory or on the ephemeral filesystem. `POST /api/v1/jobs/run` (protected by `x-job-secret`) performs publish/archive reconciliation and is safe to call repeatedly; the server also reconciles on startup.
 5. **Scoring is server-side only.** Points, ranks, statuses, and timestamps are computed by the backend from the ledger + verified completions. The client never submits scores.
@@ -70,8 +70,15 @@ E2E: `cd apps/web && npx playwright test` (needs API on :4000 + web on :5173; Ch
 3. Deploys run `prisma migrate deploy` on start. Handle cold starts: first request may take ~30–60s; the frontend shows loading states, and `/health` + `/ready` distinguish liveness from readiness.
 4. External scheduler (Render Cron, GitHub Actions schedule, or cron-job.org — all free): `POST https://<api>/api/v1/jobs/run` with header `x-job-secret: <JOB_SECRET>` every 5–15 min.
 
-### Database — managed PostgreSQL
-Use Neon, Supabase, or Render Postgres free tier. Then: set `DATABASE_URL`, `STORE=prisma`, run `prisma migrate deploy`. **Check current free-tier policies before launch**: row/storage caps, inactivity suspension/deletion, and backup/export availability vary and change often. Export via `pg_dump $DATABASE_URL` weekly; CSV exports for leaderboard/completions/participants are also in the admin panel.
+### Database — Supabase Postgres
+1. Create a project at supabase.com (closest region; save the DB password). Free tier pauses after a week of inactivity — the 60s snapshots keep it awake during the event.
+2. Project Settings → Database → Connection string → **Transaction pooler** URI. It looks like `postgresql://postgres.[ref]:[PASSWORD]@aws-0-[region].pooler.supabase.com:6543/postgres` — replace `[PASSWORD]` (URL-encode special chars) and ensure `?pgbouncer=true` is appended. This is your `DATABASE_URL`.
+3. Run the migration **once** from your machine using the **Direct** connection URI (port 5432, no pgbouncer flag):
+   ```bash
+   DATABASE_URL='postgresql://postgres:[PASSWORD]@db.[ref].supabase.co:5432/postgres' npm run db:migrate -w apps/api
+   ```
+4. On Render set `STORE=prisma` + `DATABASE_URL=<pooler URI>` and redeploy. Logs should show `Loaded snapshot from Postgres` and `Snapshotting to Postgres every 60s`.
+5. Existing memory data does **not** transfer — the superadmin recreates from bootstrap env at boot; re-add challenges via `/#/admin`. **Check current free-tier policies before launch**: row/storage caps, pausing, and backup availability vary. Export via the Supabase dashboard (or `pg_dump` with the direct URI) weekly; CSV exports for leaderboard/completions/participants are also in the admin panel.
 
 ### First admin (secure bootstrap)
 With the default `STORE=memory`, each process owns an isolated store — so start the
@@ -132,7 +139,7 @@ Errors: `{ error: { code, message, details? } }`. Pagination: `{ data, page, pag
 
 ## Known limitations
 
-1. `STORE=memory` does not persist across restarts — production must use `STORE=prisma` + managed Postgres.
+1. `STORE=memory` does not persist across restarts — production must use `STORE=prisma` + Supabase (snapshot every 60s + on shutdown; a crash can lose <1 interval of writes).
 2. Automated LeetCode verification ships as mock + disabled-by-default; production relies on manual review until a compliant lookup is configured.
 3. Leaderboard rank movement shows only live ranks (no fabricated history); snapshots are a future enhancement.
 4. Sessions are opaque tokens in HttpOnly cookies (+ Bearer fallback for API clients); true multi-device management UI is minimal (revoke-all).
