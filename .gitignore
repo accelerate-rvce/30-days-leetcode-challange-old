@@ -8,3 +8,5 @@ apps/*/.env
 .env
 playwright-report/
 test-results/
+*.swp
+*.swo
