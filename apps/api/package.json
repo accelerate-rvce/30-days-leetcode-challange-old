@@ -1,0 +1,43 @@
+{
+  "name": "apps-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "db:migrate": "prisma migrate deploy",
+    "db:seed": "tsx src/seed.ts",
+    "bootstrap": "tsx src/bootstrap.ts"
+  },
+  "dependencies": {
+    "@accelerate/shared": "1.0.0",
+    "@prisma/client": "5.22.0",
+    "bcryptjs": "2.4.3",
+    "cookie-parser": "1.4.6",
+    "cors": "2.8.5",
+    "dotenv": "16.4.5",
+    "express": "4.21.2",
+    "nodemailer": "6.9.15",
+    "zod": "3.23.8"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "2.4.6",
+    "@types/cookie-parser": "1.4.7",
+    "@types/cors": "2.8.17",
+    "@types/express": "4.17.21",
+    "@types/node": "22.9.0",
+    "@types/nodemailer": "6.4.16",
+    "@types/supertest": "6.0.2",
+    "prisma": "5.22.0",
+    "supertest": "7.0.0",
+    "tsx": "4.19.2",
+    "typescript": "5.6.3",
+    "vitest": "2.1.8"
+  }
+}

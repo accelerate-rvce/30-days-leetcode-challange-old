@@ -1,0 +1,215 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PARTICIPANT
+  ADMIN
+  SUPERADMIN
+}
+
+enum AccountStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+}
+
+enum WaitlistStatus {
+  PENDING
+  EMAIL_VERIFIED
+  APPROVED
+  REJECTED
+  INVITED
+}
+
+enum ChallengeState {
+  DRAFT
+  SCHEDULED
+  ACTIVE
+  ARCHIVED
+}
+
+enum ClaimStatus {
+  PENDING
+  VERIFIED
+  NOT_VERIFIED
+  MANUAL_REVIEW
+}
+
+model User {
+  id               String        @id @default(cuid())
+  email            String        @unique
+  emailNorm        String        @unique
+  name             String
+  displayName      String
+  leetcodeUsername String
+  passwordHash     String
+  role             Role          @default(PARTICIPANT)
+  status           AccountStatus @default(PENDING_VERIFICATION)
+  emailVerifiedAt  DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  completions      Completion[]
+  adjustments      ScoreLedger[] @relation("LedgerUser")
+  sessions         Session[]
+  auditLogs        AuditLog[]    @relation("AuditActor")
+
+  @@index([role, status])
+  @@index([leetcodeUsername])
+}
+
+model WaitlistEntry {
+  id               String         @id @default(cuid())
+  email            String
+  emailNorm        String         @unique
+  name             String
+  leetcodeUsername String
+  consent          Boolean        @default(false)
+  status           WaitlistStatus @default(PENDING)
+  invitedAt        DateTime?
+  decidedAt        DateTime?
+  decidedBy        String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([status, createdAt])
+}
+
+model Challenge {
+  id            String         @id @default(cuid())
+  dayNumber     Int            @unique
+  title         String
+  slug          String         @unique
+  leetcodeUrl   String
+  difficulty    String
+  topics        String[]
+  state         ChallengeState @default(DRAFT)
+  publishAt     DateTime?
+  archiveAt     DateTime?
+  activePoints  Int            @default(100)
+  archivedPoints Int           @default(25)
+  publishedAt   DateTime?
+  archivedAt    DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  completions   Completion[]
+  history       ChallengeHistory[]
+
+  @@index([state, dayNumber])
+  @@index([publishAt])
+}
+
+model ChallengeHistory {
+  id          String   @id @default(cuid())
+  challengeId String
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  actorId     String?
+  action      String
+  detail      String   @default("")
+  createdAt   DateTime @default(now())
+
+  @@index([challengeId, createdAt])
+}
+
+model Completion {
+  id           String      @id @default(cuid())
+  userId       String
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challengeId  String
+  challenge    Challenge   @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  status       ClaimStatus @default(PENDING)
+  points       Int         @default(0)
+  evidence     String      @default("")
+  failReason   String      @default("")
+  attempts     Int         @default(1)
+  verifiedAt   DateTime?
+  solveTime    DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@unique([userId, challengeId])
+  @@index([status, updatedAt])
+  @@index([challengeId, status])
+}
+
+model ScoreLedger {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation("LedgerUser", fields: [userId], references: [id], onDelete: Cascade)
+  challengeId String?
+  delta       Int
+  reason      String
+  actorId     String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model Session {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  ip         String   @default("")
+  userAgent  String   @default("")
+  createdAt  DateTime @default(now())
+
+  @@index([userId, expiresAt])
+}
+
+model EmailToken {
+  id        String   @id @default(cuid())
+  purpose   String
+  emailNorm String
+  userId    String?
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([emailNorm, purpose])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  actor     User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  action    String
+  entity    String   @default("")
+  entityId  String   @default("")
+  detail    String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([action, createdAt])
+  @@index([entity, entityId])
+}
+
+model EventSettings {
+  id               String   @id @default("singleton")
+  eventName        String   @default("30 Days of LeetCode")
+  description      String   @default("")
+  startDate        DateTime?
+  endDate          DateTime?
+  timezone         String   @default("Asia/Kolkata")
+  registrationMode String   @default("WAITLIST")
+  activePoints     Int      @default(100)
+  archivedPoints   Int      @default(25)
+  updatedAt        DateTime @updatedAt
+}
+
+model JobRun {
+  id         String   @id @default(cuid())
+  job        String
+  status     String
+  detail     String   @default("")
+  createdAt  DateTime @default(now())
+
+  @@index([job, createdAt])
+}

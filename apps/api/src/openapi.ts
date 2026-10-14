@@ -1,0 +1,28 @@
+export const openapiDoc = {
+  openapi: "3.0.3",
+  info: { title: "Accelerate 30 Days of LeetCode API", version: "1.0.0", description: "Versioned REST API for the Accelerate challenge platform." },
+  servers: [{ url: "/api/v1" }],
+  tags: [
+    { name: "auth" }, { name: "waitlist" }, { name: "challenges" },
+    { name: "completions" }, { name: "leaderboard" }, { name: "admin" }, { name: "jobs" },
+  ],
+  paths: {
+    "/health": { get: { tags: ["jobs"], summary: "Liveness probe", responses: { "200": { description: "ok" } } } },
+    "/auth/register": { post: { tags: ["auth"], summary: "Register (mode-gated)", responses: { "201": { description: "created" } } } },
+    "/auth/verify-email": { post: { tags: ["auth"], summary: "Verify email (single-use token)", responses: { "200": { description: "ok" } } } },
+    "/auth/login": { post: { tags: ["auth"], summary: "Login (cookie + token)", responses: { "200": { description: "ok" } } } },
+    "/auth/logout": { post: { tags: ["auth"], summary: "Logout + revoke session", responses: { "200": { description: "ok" } } } },
+    "/auth/forgot-password": { post: { tags: ["auth"], summary: "Request reset (anti-enumeration generic 200)", responses: { "200": { description: "ok" } } } },
+    "/auth/reset-password": { post: { tags: ["auth"], summary: "Reset with token", responses: { "200": { description: "ok" } } } },
+    "/waitlist": { post: { tags: ["waitlist"], summary: "Join waitlist", responses: { "201": { description: "created" } } } },
+    "/waitlist/status": { get: { tags: ["waitlist"], summary: "Check waitlist status", responses: { "200": { description: "ok" } } } },
+    "/challenges": { get: { tags: ["challenges"], summary: "List visible challenges", responses: { "200": { description: "ok" } } } },
+    "/challenges/today": { get: { tags: ["challenges"], summary: "Today's challenge (server time)", responses: { "200": { description: "ok" } } } },
+    "/completions/claims": { post: { tags: ["completions"], summary: "Submit verification claim", responses: { "201": { description: "verified" }, "202": { description: "queued for review" } } } },
+    "/leaderboard": { get: { tags: ["leaderboard"], summary: "Public paginated leaderboard", responses: { "200": { description: "ok" } } } },
+    "/admin/overview": { get: { tags: ["admin"], summary: "Admin overview (RBAC)", responses: { "200": { description: "ok" } } } },
+    "/admin/challenges": { get: { tags: ["admin"], summary: "Manage challenges", responses: { "200": { description: "ok" } } } },
+    "/admin/verifications": { get: { tags: ["admin"], summary: "Verification queue", responses: { "200": { description: "ok" } } } },
+    "/jobs/run": { post: { tags: ["jobs"], summary: "Protected scheduler endpoint (x-job-secret)", responses: { "200": { description: "ok" } } } },
+  },
+};

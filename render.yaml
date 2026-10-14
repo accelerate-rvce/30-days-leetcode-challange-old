@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: accelerate-api
+    runtime: node
+    buildCommand: npm ci && npm run build -w packages/shared && npm run build -w apps/api
+    startCommand: npm run db:migrate -w apps/api && npm start -w apps/api
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: STORE
+        value: prisma
+      - key: DATABASE_URL
+        sync: false
+      - key: SESSION_SECRET
+        sync: false
+      - key: WEB_ORIGIN
+        sync: false
+      - key: JOB_SECRET
+        sync: false
+      - key: EMAIL_PROVIDER
+        value: smtp
+      - key: VERIFICATION_PROVIDER
+        value: disabled

@@ -1,0 +1,10 @@
+node_modules/
+dist/
+coverage/
+*.local
+apps/*/dist
+apps/*/.env
+!apps/*/.env.example
+.env
+playwright-report/
+test-results/

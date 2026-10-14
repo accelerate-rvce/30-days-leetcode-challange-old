@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+body { background: #0A0A0F; color: #E5E7EB; }
+:focus-visible { outline: 2px solid #22B6F4; outline-offset: 2px; }
+.acc-gradient-text { background: linear-gradient(90deg, #22B6F4, #3B6FE0, #8B3FEE); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.acc-grid-bg {
+  background-image: linear-gradient(rgba(34,182,244,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(34,182,244,0.06) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
