@@ -16,8 +16,18 @@ if (config.store === "prisma") {
   }
   const { createPrisma, loadSnapshot } = await import("./lib/persist.js");
   prisma = await createPrisma();
-  const counts = await loadSnapshot(prisma, store);
-  console.log("Loaded snapshot from Postgres:", JSON.stringify(counts));
+  try {
+    const counts = await loadSnapshot(prisma, store);
+    console.log("Loaded snapshot from Postgres:", JSON.stringify(counts));
+  } catch (e: unknown) {
+    if ((e as { code?: string })?.code === "P2021") {
+      console.error("Postgres tables are missing — run the migration once, then redeploy:");
+      console.error("  DATABASE_URL='<direct Supabase URI, port 5432>' npm run db:migrate -w apps/api");
+    } else {
+      console.error("Failed to load snapshot from Postgres:", e);
+    }
+    process.exit(1);
+  }
   const everyMs = Number(process.env.SNAPSHOT_INTERVAL_SEC ?? "60") * 1000;
   setInterval(async () => {
     try {
